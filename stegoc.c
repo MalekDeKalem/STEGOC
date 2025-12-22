@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <argp.h>
 #include <string.h>
 
 
 #define HEADER_OFFSET 60
 
+const char *argp_program_version = "stegoc ver: 1.0"
 
 
 int main(int argc, char** argv) {
