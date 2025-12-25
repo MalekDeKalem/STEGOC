@@ -6,7 +6,53 @@
 
 #define HEADER_OFFSET 60
 
-const char *argp_program_version = "stegoc ver: 1.0"
+const static char *ARGP_PROGRAM_VER = "STEGOC 1.0";
+const static char DOC[] = "STEGOC Tool for Steganography";
+const static char ARGS_DOC[] = "CARRIER_FILE";
+const static struct ArgpOps ops[] = {
+  {"extract", "e", 0, 0, "Path to file that has another file hidden in it with the STEGOC tool"},
+  {"hidden", "s", 0, 0, "Path to file that needs to be hidden in another file"},
+  {"output", "o", 0, 0, "Define the resulting file of the command"},
+  {0}
+};
+
+typedef struct {
+  const char* extract;
+  const char* hidden;
+  const char* output;
+} Args;
+
+static error_t parseOpts(int key, char* arg, struct argp_state* state) {
+  Args* args = (Args*)state->input;
+  
+  switch (key) {
+    case 'e':
+      args->extract = arg;
+      break;
+    case 's':
+      args->hidden = arg;
+      break;
+    case 'o':
+      args->output = arg;
+      break;
+    default:
+      return ARGP_ERR_UNKNOWN;
+  }
+  return 0;
+}
+
+static struct Argp parser = {ops parseOpts, ARGS_DOC, DOC};
+
+int main(int argc, char** argv) {
+  Args args;
+  args.extract = "";
+  args.hidden = "";
+  args.output = "output";
+
+  argp_parse(&parser, argc, argv, 0, 0, &args);
+
+  return EXIT_SUCCESS;
+}
 
 
 int main(int argc, char** argv) {
@@ -53,11 +99,6 @@ int main(int argc, char** argv) {
         fseek(hidden, 0, SEEK_END);
         hidden_len = ftell(hidden);
         rewind(hidden);
-
-
-        // fread(carrier_buf, 1, carrier_len, carrier);
-        // fread(hidden_buf, 1, hidden_len, hidden);
-
 
         out = fopen(out_path, "wb");
         if (out == NULL) {
@@ -143,9 +184,6 @@ int main(int argc, char** argv) {
     } else {
         printf("Run the --help flag to get information on how to run this command");
     }
-
-
-
 
     return 0;
 }
