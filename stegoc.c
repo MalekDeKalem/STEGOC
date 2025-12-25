@@ -6,7 +6,7 @@
 
 #define HEADER_OFFSET 60
 
-const static char *ARGP_PROGRAM_VER = "STEGOC 1.0";
+const static char *ARGP_PROGRAM_VER = "STEGOC 1.1";
 const static char DOC[] = "STEGOC Tool for Steganography";
 const static char ARGS_DOC[] = "CARRIER_FILE";
 const static struct ArgpOps ops[] = {
@@ -20,6 +20,7 @@ typedef struct {
   const char* extract;
   const char* hidden;
   const char* output;
+  const char* carrier;
 } Args;
 
 static error_t parseOpts(int key, char* arg, struct argp_state* state) {
@@ -35,6 +36,13 @@ static error_t parseOpts(int key, char* arg, struct argp_state* state) {
     case 'o':
       args->output = arg;
       break;
+    case ARGP_KEY_ARG:
+      if (state->arg_num > 1) arg_usage(state);
+      args->carrier = arg;
+      break;
+    case ARGP_KEY_END:
+      if (state->arg_num < 1) arg_usage(state);
+      break;
     default:
       return ARGP_ERR_UNKNOWN;
   }
@@ -45,16 +53,31 @@ static struct Argp parser = {ops parseOpts, ARGS_DOC, DOC};
 
 int main(int argc, char** argv) {
   Args args;
-  args.extract = "";
-  args.hidden = "";
+  args.extract = NULL;
+  args.hidden = NULL;
   args.output = "output";
 
   argp_parse(&parser, argc, argv, 0, 0, &args);
 
+  if (args.extract == NULL && args.hidden == NULL) {
+    exit(EXIT_FAILURE);
+  }
+
+  if (args.extract != NULL && args.hidden != NULL) {
+    perror("the extract and the hidden flag cant both be set");
+    exit(EXIT_FAILURE);
+  }
+
+  if (hidden != NULL) {
+    // TODO hide file
+  } else {
+    // TODO extract file
+  }
+
   return EXIT_SUCCESS;
 }
 
-
+/*
 int main(int argc, char** argv) {
 
     if (argc > 5 || argc < 4 || strcmp(argv[1], "--help") == 0) {
@@ -187,3 +210,5 @@ int main(int argc, char** argv) {
 
     return 0;
 }
+
+*/
