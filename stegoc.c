@@ -6,13 +6,14 @@
 
 #define HEADER_OFFSET 60
 
-const static char *ARGP_PROGRAM_VER = "STEGOC 1.1";
-const static char DOC[] = "STEGOC Tool for Steganography";
-const static char ARGS_DOC[] = "CARRIER_FILE";
-const static struct ArgpOps ops[] = {
-  {"extract", "e", 0, 0, "Path to file that has another file hidden in it with the STEGOC tool"},
-  {"hidden", "s", 0, 0, "Path to file that needs to be hidden in another file"},
-  {"output", "o", 0, 0, "Define the resulting file of the command"},
+const char *argp_program_version = "STEGOC 1.1";
+const static char doc[] = "STEGOC Tool for Steganography";
+const static char args_doc[] = "CARRIER_FILE";
+
+static struct argp_option ops[] = {
+  {"extract", 'e', 0, 0, "Path to file that has another file hidden in it with the STEGOC tool"},
+  {"hidden", 's', 0, 0, "Path to file that needs to be hidden in another file"},
+  {"output", 'o', 0, 0, "Define the resulting file of the command"},
   {0}
 };
 
@@ -21,10 +22,10 @@ typedef struct {
   const char* hidden;
   const char* output;
   const char* carrier;
-} Args;
+} arguments;
 
-static error_t parseOpts(int key, char* arg, struct argp_state* state) {
-  Args* args = (Args*)state->input;
+static error_t parse_opts(int key, char* arg, struct argp_state* state) {
+  arguments* args = (arguments*)state->input;
   
   switch (key) {
     case 'e':
@@ -37,11 +38,11 @@ static error_t parseOpts(int key, char* arg, struct argp_state* state) {
       args->output = arg;
       break;
     case ARGP_KEY_ARG:
-      if (state->arg_num > 1) arg_usage(state);
+      if (state->arg_num > 1) argp_usage(state);
       args->carrier = arg;
       break;
     case ARGP_KEY_END:
-      if (state->arg_num < 1) arg_usage(state);
+      if (state->arg_num < 1) argp_usage(state);
       break;
     default:
       return ARGP_ERR_UNKNOWN;
@@ -49,10 +50,127 @@ static error_t parseOpts(int key, char* arg, struct argp_state* state) {
   return 0;
 }
 
-static struct Argp parser = {ops parseOpts, ARGS_DOC, DOC};
+static struct argp parser = {ops, parse_opts, args_doc, doc};
+
+void hide(const char* hiddenStr, const char* carrierStr, const char* output) {
+
+  FILE *carrier;
+  FILE *hidden;
+  FILE *out;
+  carrier = fopen(carrierStr, "rb");
+  hidden = fopen(hiddenStr, "rb");
+  long carrierLen;
+  long hiddenLen;
+  char signature[] = {'S', 'T', 'E', 'G', 'O', 'C'};
+
+
+  if (carrier == NULL) {
+      perror("Error opening carrier file \n");
+      fclose(hidden);
+  }
+
+  if (hidden == NULL) {
+      perror("Error opening hidden file \n");
+      fclose(carrier);
+  }
+
+  // Get Byte Length from Carrier file
+  fseek(carrier, 0, SEEK_END);
+  carrierLen = ftell(carrier);
+  rewind(carrier);
+
+  // Get Byte Length from Hidden file
+  fseek(hidden, 0, SEEK_END);
+  hiddenLen = ftell(hidden);
+  rewind(hidden);
+
+  out = fopen(output, "wb");
+  if (out == NULL) {
+      perror("Error opening output file \n");
+  }
+
+
+  for (int i = 0; i < carrierLen; i++) {
+      char byte = fgetc(carrier);
+      fputc(byte, out);
+  }
+
+  
+  for (int i = 0; i < 6; i++) {
+      fputc(signature[i], out);
+  }
+
+  for (int i = 0; i < hiddenLen; i++) {
+      char byte = fgetc(hidden);
+      fputc(byte, out);
+  }
+
+
+  fclose(carrier);
+  fclose(hidden);
+  fclose(out);
+}
+
+void extract(const char* carrierStr, const char* output) {
+  FILE* in;
+  FILE* out;
+  const char* signature = "STEGOC";
+  const size_t sigLen = strlen(signature);
+  long inLen;
+
+  in = fopen(carrierStr, "rb");
+
+  if (in == NULL) {
+      perror("Error opening input file \n");
+      fclose(in);
+  }
+
+  fseek(in, 0, SEEK_END);
+  inLen = ftell(in);
+
+  long index = -1;
+
+  for (long pos = inLen-1; pos >= sigLen-1; pos--) {
+      fseek(in, pos, SEEK_SET);
+      int ch = fgetc(in);
+
+      if (ch == 'S') {
+          int match = 1;
+          for (size_t i = 0; i < sigLen; i++) {
+              fseek(in, pos - i, SEEK_SET);
+              int fileChar = fgetc(in);
+              if (fileChar != signature[i]) {
+                  match = 0;
+                  break;
+              }
+          }
+
+          if (match) {
+              index = pos + 1;
+              break;
+          }
+      }
+  }
+
+  out = fopen(output, "wb");
+  if (out == NULL) {
+      perror("Error opening output file \n");
+  }
+
+  fseek(in, index, SEEK_SET);
+  for (long i = index; i < inLen; i++) {
+      int byte = fgetc(in);
+      fputc(byte, out);
+  }
+
+
+  fclose(out);
+  fclose(in);
+}
+
 
 int main(int argc, char** argv) {
-  Args args;
+  arguments args;
   args.extract = NULL;
   args.hidden = NULL;
   args.output = "output";
@@ -68,10 +186,10 @@ int main(int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
 
-  if (hidden != NULL) {
-    // TODO hide file
+  if (args.hidden != NULL) {
+    hide(args.hidden, args.carrier, args.output);
   } else {
-    // TODO extract file
+    extract(args.carrier, args.output);
   }
 
   return EXIT_SUCCESS;
