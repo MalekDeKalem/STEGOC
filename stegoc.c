@@ -12,13 +12,13 @@ const static char args_doc[] = "CARRIER_FILE";
 
 static struct argp_option ops[] = {
   {"extract", 'e', 0, 0, "Path to file that has another file hidden in it with the STEGOC tool"},
-  {"hidden", 's', 0, 0, "Path to file that needs to be hidden in another file"},
-  {"output", 'o', 0, 0, "Define the resulting file of the command"},
+  {"hidden", 's', "FILE", 0, "Path to file that needs to be hidden in another file"},
+  {"output", 'o', "FILE", 0, "Define the resulting file of the command"},
   {0}
 };
 
 typedef struct {
-  const char* extract;
+  int extract;
   const char* hidden;
   const char* output;
   const char* carrier;
@@ -29,7 +29,7 @@ static error_t parse_opts(int key, char* arg, struct argp_state* state) {
   
   switch (key) {
     case 'e':
-      args->extract = arg;
+      args->extract = 1;
       break;
     case 's':
       args->hidden = arg;
@@ -38,11 +38,13 @@ static error_t parse_opts(int key, char* arg, struct argp_state* state) {
       args->output = arg;
       break;
     case ARGP_KEY_ARG:
-      if (state->arg_num > 1) argp_usage(state);
+      if (args->carrier != NULL) {
+          argp_usage(state);
+      }
       args->carrier = arg;
       break;
     case ARGP_KEY_END:
-      if (state->arg_num < 1) argp_usage(state);
+      if (args->carrier == NULL) argp_usage(state);
       break;
     default:
       return ARGP_ERR_UNKNOWN;
@@ -66,12 +68,13 @@ void hide(const char* hiddenStr, const char* carrierStr, const char* output) {
 
   if (carrier == NULL) {
       perror("Error opening carrier file \n");
-      fclose(hidden);
+      return;
   }
 
   if (hidden == NULL) {
       perror("Error opening hidden file \n");
       fclose(carrier);
+      return;
   }
 
   // Get Byte Length from Carrier file
@@ -122,7 +125,7 @@ void extract(const char* carrierStr, const char* output) {
 
   if (in == NULL) {
       perror("Error opening input file \n");
-      fclose(in);
+      return;
   }
 
   fseek(in, 0, SEEK_END);
@@ -170,18 +173,18 @@ void extract(const char* carrierStr, const char* output) {
 
 
 int main(int argc, char** argv) {
-  arguments args;
-  args.extract = NULL;
+  arguments args= {0};
+  args.extract = 0;
   args.hidden = NULL;
   args.output = "output";
 
   argp_parse(&parser, argc, argv, 0, 0, &args);
 
-  if (args.extract == NULL && args.hidden == NULL) {
+  if (!args.extract && args.hidden == NULL) {
     exit(EXIT_FAILURE);
   }
 
-  if (args.extract != NULL && args.hidden != NULL) {
+  if (args.extract && args.hidden != NULL) {
     perror("the extract and the hidden flag cant both be set");
     exit(EXIT_FAILURE);
   }
